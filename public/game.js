@@ -380,14 +380,21 @@ document.addEventListener('touchmove', (e) => {
 
 // Click/Tap to start/restart
 function handleInteraction(e) {
+    // Resume Audio Context on user interaction (required for mobile)
+    if (audio.ctx.state === 'suspended') {
+        audio.ctx.resume();
+    }
     audio.init(); // Initialize audio context on first interaction
     
     // Try to enter fullscreen on mobile
-    if (isMobile && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(err => {
-            // Ignore errors if fullscreen is denied
-            console.log('Fullscreen denied:', err);
-        });
+    if (isMobile && !document.fullscreenElement) {
+        // iOS Safari doesn't support requestFullscreen on documentElement
+        // We can only suggest adding to homescreen, but for Android we can try:
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(err => console.log(err));
+        } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen(); // Safari/Chrome legacy
+        }
     }
 
     if (gameState === 'START' || gameState === 'GAMEOVER') {
@@ -663,13 +670,13 @@ function collisionDetection(brickWidth, brickHeight) {
                                 b.status = 0;
                                 score += b.value;
                                 audio.play('brick');
-                                spawnPowerUp(b.x + brickWidth/2, b.y + brickHeight/2);
+                                spawnPowerUp(b.x + brickWidth/2 - POWERUP_WIDTH/2, b.y + brickHeight/2);
                             }
                         } else {
                             b.status = 0;
                             score += b.value;
                             audio.play('brick');
-                            spawnPowerUp(b.x + brickWidth/2, b.y + brickHeight/2);
+                            spawnPowerUp(b.x + brickWidth/2 - POWERUP_WIDTH/2, b.y + brickHeight/2);
                         }
                     }
                 });

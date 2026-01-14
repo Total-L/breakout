@@ -418,15 +418,29 @@ function drawBall(ball) {
     ctx.closePath();
 }
 
+// Helper function to draw rounded rect path
+function roundedRectPath(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+}
+
 function drawPaddle() {
     // Draw Vaus-like paddle
     const r = PADDLE_HEIGHT / 2;
     
     ctx.save(); // Save context state for clipping
     
-    // Create the main paddle shape path
-    ctx.beginPath();
-    ctx.roundRect(paddleX, paddleY, paddleWidth, PADDLE_HEIGHT, r);
+    // Create the main paddle shape path manually to ensure clip works on all devices
+    roundedRectPath(ctx, paddleX, paddleY, paddleWidth, PADDLE_HEIGHT, r);
     ctx.clip(); // Clip everything to this shape
     
     // Main body silver
@@ -434,18 +448,21 @@ function drawPaddle() {
     ctx.fillRect(paddleX, paddleY, paddleWidth, PADDLE_HEIGHT);
     
     // Red engines (Now safely clipped)
+    // Move engines slightly inwards to avoid extreme clipping on rounded corners
+    const engineMargin = r * 0.6; 
+    
     ctx.fillStyle = '#FF0000';
     ctx.beginPath();
-    ctx.rect(paddleX + 2, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4);
+    ctx.rect(paddleX + engineMargin, paddleY + 2, paddleWidth * 0.25, PADDLE_HEIGHT - 4);
     ctx.fill();
     
     ctx.beginPath();
-    ctx.rect(paddleX + paddleWidth - paddleWidth * 0.2 - 2, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4);
+    ctx.rect(paddleX + paddleWidth - paddleWidth * 0.25 - engineMargin, paddleY + 2, paddleWidth * 0.25, PADDLE_HEIGHT - 4);
     ctx.fill();
     
     // Center glow
     ctx.fillStyle = '#00AAFF';
-    ctx.fillRect(paddleX + paddleWidth * 0.4, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4);
+    ctx.fillRect(paddleX + paddleWidth * 0.35, paddleY + 2, paddleWidth * 0.3, PADDLE_HEIGHT - 4);
     
     ctx.restore(); // Remove clipping
 }

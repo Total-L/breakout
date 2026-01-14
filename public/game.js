@@ -436,17 +436,22 @@ function roundedRectPath(ctx, x, y, width, height, radius) {
 function drawPaddle() {
     const r = PADDLE_HEIGHT / 2;
 
-    // Create a metallic/neon gradient
+    // Create a Silver-Gold metallic gradient
     const gradient = ctx.createLinearGradient(paddleX, paddleY, paddleX, paddleY + PADDLE_HEIGHT);
-    gradient.addColorStop(0, '#00FFFF');    // Cyan Top
-    gradient.addColorStop(0.5, '#0088FF');  // Blue Middle
-    gradient.addColorStop(1, '#0000AA');    // Dark Blue Bottom
+    // Silver Top
+    gradient.addColorStop(0, '#FFFFFF');    
+    gradient.addColorStop(0.2, '#E0E0E0');
+    // Gold/Bronze Middle band
+    gradient.addColorStop(0.5, '#D4AF37');  
+    // Darker Silver Bottom
+    gradient.addColorStop(0.8, '#A0A0A0');
+    gradient.addColorStop(1, '#606060');
 
     ctx.save();
     
-    // Add a nice glow effect
-    ctx.shadowColor = '#00FFFF';
-    ctx.shadowBlur = 10;
+    // Add a golden glow effect
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 15;
     
     ctx.fillStyle = gradient;
     
@@ -454,11 +459,18 @@ function drawPaddle() {
     roundedRectPath(ctx, paddleX, paddleY, paddleWidth, PADDLE_HEIGHT, r);
     ctx.fill();
     
-    // Add a glossy highlight on top for 3D effect
-    ctx.shadowBlur = 0; // Disable shadow for highlight
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    roundedRectPath(ctx, paddleX + r/2, paddleY + 2, paddleWidth - r, PADDLE_HEIGHT * 0.35, PADDLE_HEIGHT * 0.15);
+    // Add metallic sheen/highlight
+    ctx.shadowBlur = 0;
+    
+    // Top highlight (White reflection)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    roundedRectPath(ctx, paddleX + r/2, paddleY + 2, paddleWidth - r, PADDLE_HEIGHT * 0.3, PADDLE_HEIGHT * 0.15);
     ctx.fill();
+    
+    // Gold trim detail (Thin line)
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
     ctx.restore();
 }

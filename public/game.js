@@ -74,6 +74,11 @@ class SoundController {
             
             osc.start(now);
             osc.stop(now + 0.2);
+            // Cleanup nodes
+            setTimeout(() => {
+                osc.disconnect();
+                gain.disconnect();
+            }, 250);
             
             noteIndex = (noteIndex + 1) % sequence.length;
         }, 150);
@@ -104,6 +109,7 @@ class SoundController {
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
                 osc.start(now);
                 osc.stop(now + 0.1);
+                setTimeout(() => { osc.disconnect(); gain.disconnect(); }, 150);
                 break;
             case 'paddle':
                 osc.type = 'triangle';
@@ -112,6 +118,7 @@ class SoundController {
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
                 osc.start(now);
                 osc.stop(now + 0.1);
+                setTimeout(() => { osc.disconnect(); gain.disconnect(); }, 150);
                 break;
             case 'wall':
                 osc.type = 'sine';
@@ -120,6 +127,7 @@ class SoundController {
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
                 osc.start(now);
                 osc.stop(now + 0.05);
+                setTimeout(() => { osc.disconnect(); gain.disconnect(); }, 100);
                 break;
              case 'die':
                 osc.type = 'sawtooth';
@@ -129,6 +137,7 @@ class SoundController {
                 gain.gain.linearRampToValueAtTime(0, now + 0.5);
                 osc.start(now);
                 osc.stop(now + 0.5);
+                setTimeout(() => { osc.disconnect(); gain.disconnect(); }, 550);
                 break;
              case 'gameover':
                  [300, 250, 200, 150].forEach((freq, i) => {
@@ -141,6 +150,7 @@ class SoundController {
                     g.gain.exponentialRampToValueAtTime(0.001, now + i*0.2 + 0.2);
                     o.start(now + i*0.2);
                     o.stop(now + i*0.2 + 0.2);
+                    setTimeout(() => { o.disconnect(); g.disconnect(); }, i*200 + 250);
                  });
                  break;
             case 'win':
@@ -155,6 +165,7 @@ class SoundController {
                     g.gain.exponentialRampToValueAtTime(0.001, now + i*0.1 + 0.1);
                     o.start(now + i*0.1);
                     o.stop(now + i*0.1 + 0.1);
+                    setTimeout(() => { o.disconnect(); g.disconnect(); }, i*100 + 150);
                  });
                  break;
         }
@@ -685,8 +696,9 @@ function draw() {
     collisionDetection(brickWidth, brickHeight);
     
     // Update PowerUps
+    // Clean up inactive powerups to prevent memory leak
+    powerUps = powerUps.filter(p => p.active);
     powerUps.forEach(p => {
-        if (!p.active) return;
         p.y += p.dy;
         
         // Paddle collision
@@ -701,9 +713,10 @@ function draw() {
     });
     
     // Update Balls
+    // Clean up inactive balls to prevent memory leak
+    balls = balls.filter(b => b.active);
     let activeBalls = 0;
     balls.forEach(ball => {
-        if (!ball.active) return;
         activeBalls++;
         
         // Wall collision

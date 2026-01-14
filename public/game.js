@@ -269,10 +269,12 @@ let paddleWidth, paddleX, paddleY;
 let ballRadius;
 let balls = []; // Array of {x, y, dx, dy, active}
 let powerUps = []; // Array of {x, y, type, active, dy}
+let particles = []; // Array of {x, y, dx, dy, life, color}
 let bricks = [];
 let score = 0;
+let highScore = localStorage.getItem('breakout_highscore') || 1000;
 let lives = 3;
-let gameState = 'START'; // START, PLAYING, GAMEOVER
+let gameState = 'START'; // START, PLAYING, GAMEOVER, LEVEL_TRANSITION
 let currentLevel = 1;
 let backgroundPattern = null;
 
@@ -751,34 +753,83 @@ function drawPowerUps() {
     }
 }
 
+function spawnParticles(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+        particles.push({
+            x: x,
+            y: y,
+            dx: (Math.random() - 0.5) * 6,
+            dy: (Math.random() - 0.5) * 6,
+            life: 1.0,
+            color: color
+        });
+    }
+}
+
+function drawParticles() {
+    particles.forEach((p, index) => {
+        p.life -= 0.05;
+        if (p.life <= 0) {
+            particles.splice(index, 1);
+            return;
+        }
+        
+        p.x += p.dx;
+        p.y += p.dy;
+        p.dy += 0.2; // Gravity
+        
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    });
+}
+
 function drawScore() {
-    ctx.font = '20px "Courier New", monospace';
-    
     // Add safe area padding for mobile notches/status bars
     const topPadding = isMobile ? 50 : 30;
-    
-    ctx.fillStyle = '#FF0000';
-    ctx.fillText('1UP', 20, topPadding);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(score, 60, topPadding);
-    
-    // Draw Level
-    ctx.fillStyle = '#FFD700';
-    ctx.textAlign = 'center';
-    ctx.fillText('LEVEL ' + currentLevel, canvas.width / 2, topPadding);
-    
-    // Debug Hint
-    // ctx.font = '12px Arial';
-    // ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    // ctx.fillText('Press N to Skip', canvas.width / 2, topPadding + 20);
-    // ctx.font = '20px "Courier New", monospace'; // Reset font
-    
-    ctx.textAlign = 'left';
 
-    ctx.fillStyle = '#FF0000';
-    ctx.fillText('HIGH SCORE', canvas.width - 200, topPadding);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText('50000', canvas.width - 80, topPadding);
+    if (isMobile) {
+        ctx.font = 'bold 16px "Courier New", monospace';
+        
+        // Left: Score
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'left';
+        ctx.fillText('SC:' + score, 10, topPadding);
+        
+        // Center: Level
+        ctx.fillStyle = '#FFD700';
+        ctx.textAlign = 'center';
+        ctx.fillText('LV ' + currentLevel, canvas.width / 2, topPadding);
+        
+        // Right: High Score
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'right';
+        ctx.fillText('HI:' + highScore, canvas.width - 10, topPadding);
+        
+        // Reset alignment
+        ctx.textAlign = 'left';
+    } else {
+        ctx.font = '20px "Courier New", monospace';
+        
+        ctx.fillStyle = '#FF0000';
+        ctx.fillText('1UP', 20, topPadding);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(score, 60, topPadding);
+        
+        // Draw Level
+        ctx.fillStyle = '#FFD700';
+        ctx.textAlign = 'center';
+        ctx.fillText('LEVEL ' + currentLevel, canvas.width / 2, topPadding);
+        ctx.textAlign = 'left';
+
+        ctx.fillStyle = '#FF0000';
+        ctx.fillText('HIGH SCORE', canvas.width - 240, topPadding);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(highScore, canvas.width - 100, topPadding);
+    }
     
     // Lives (Vaus icons)
     for(let i = 0; i < lives - 1; i++) {
@@ -878,16 +929,18 @@ function collisionDetection(brickWidth, brickHeight) {
                             audio.play('silver');
                             if (b.hits <= 0) {
                                 b.status = 0;
-                                score += b.value;
-                                audio.play('brick');
-                                spawnPowerUp(b.x + brickWidth/2 - POWERUP_WIDTH/2, b.y + brickHeight/2);
-                            }
-                        } else {
-                            b.status = 0;
                             score += b.value;
                             audio.play('brick');
+                            spawnParticles(b.x + brickWidth/2, b.y + brickHeight/2, b.color);
                             spawnPowerUp(b.x + brickWidth/2 - POWERUP_WIDTH/2, b.y + brickHeight/2);
                         }
+                    } else {
+                        b.status = 0;
+                        score += b.value;
+                        audio.play('brick');
+                        spawnParticles(b.x + brickWidth/2, b.y + brickHeight/2, b.color);
+                        spawnPowerUp(b.x + brickWidth/2 - POWERUP_WIDTH/2, b.y + brickHeight/2);
+                    }
                     }
                 });
             }
@@ -982,6 +1035,7 @@ function draw() {
     
     balls.forEach(drawBall);
     drawPowerUps();
+    drawParticles();
     drawPaddle();
     drawScore();
 
@@ -1062,6 +1116,13 @@ function draw() {
             gameState = 'GAMEOVER';
             audio.stopBGM();
             audio.play('gameover');
+            
+            // Update High Score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('breakout_highscore', highScore);
+            }
+            
             finalScoreElement.innerText = 'Score: ' + score;
             gameOverScreen.style.display = 'flex';
         } else {

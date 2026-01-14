@@ -434,37 +434,33 @@ function roundedRectPath(ctx, x, y, width, height, radius) {
 }
 
 function drawPaddle() {
-    // Draw Vaus-like paddle
     const r = PADDLE_HEIGHT / 2;
+
+    // Create a metallic/neon gradient
+    const gradient = ctx.createLinearGradient(paddleX, paddleY, paddleX, paddleY + PADDLE_HEIGHT);
+    gradient.addColorStop(0, '#00FFFF');    // Cyan Top
+    gradient.addColorStop(0.5, '#0088FF');  // Blue Middle
+    gradient.addColorStop(1, '#0000AA');    // Dark Blue Bottom
+
+    ctx.save();
     
-    ctx.save(); // Save context state for clipping
+    // Add a nice glow effect
+    ctx.shadowColor = '#00FFFF';
+    ctx.shadowBlur = 10;
     
-    // Create the main paddle shape path manually to ensure clip works on all devices
+    ctx.fillStyle = gradient;
+    
+    // Draw main body
     roundedRectPath(ctx, paddleX, paddleY, paddleWidth, PADDLE_HEIGHT, r);
-    ctx.clip(); // Clip everything to this shape
-    
-    // Main body silver
-    ctx.fillStyle = '#CCCCCC'; 
-    ctx.fillRect(paddleX, paddleY, paddleWidth, PADDLE_HEIGHT);
-    
-    // Red engines (Now safely clipped)
-    // Move engines slightly inwards to avoid extreme clipping on rounded corners
-    const engineMargin = r * 0.6; 
-    
-    ctx.fillStyle = '#FF0000';
-    ctx.beginPath();
-    ctx.rect(paddleX + engineMargin, paddleY + 2, paddleWidth * 0.25, PADDLE_HEIGHT - 4);
     ctx.fill();
     
-    ctx.beginPath();
-    ctx.rect(paddleX + paddleWidth - paddleWidth * 0.25 - engineMargin, paddleY + 2, paddleWidth * 0.25, PADDLE_HEIGHT - 4);
+    // Add a glossy highlight on top for 3D effect
+    ctx.shadowBlur = 0; // Disable shadow for highlight
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    roundedRectPath(ctx, paddleX + r/2, paddleY + 2, paddleWidth - r, PADDLE_HEIGHT * 0.35, PADDLE_HEIGHT * 0.15);
     ctx.fill();
-    
-    // Center glow
-    ctx.fillStyle = '#00AAFF';
-    ctx.fillRect(paddleX + paddleWidth * 0.35, paddleY + 2, paddleWidth * 0.3, PADDLE_HEIGHT - 4);
-    
-    ctx.restore(); // Remove clipping
+
+    ctx.restore();
 }
 
 function drawBricks() {

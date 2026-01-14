@@ -269,6 +269,11 @@ function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    // Attempt to request fullscreen on first interaction
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement && gameState === 'PLAYING' && isMobile) {
+        // This usually requires a direct user gesture, so we might need to trigger it in handleInteraction
+    }
+
     backgroundPattern = createBackgroundPattern();
     
     // Recalculate dimensions based on new size
@@ -376,6 +381,15 @@ document.addEventListener('touchmove', (e) => {
 // Click/Tap to start/restart
 function handleInteraction(e) {
     audio.init(); // Initialize audio context on first interaction
+    
+    // Try to enter fullscreen on mobile
+    if (isMobile && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(err => {
+            // Ignore errors if fullscreen is denied
+            console.log('Fullscreen denied:', err);
+        });
+    }
+
     if (gameState === 'START' || gameState === 'GAMEOVER') {
         resetGame();
     }
@@ -401,23 +415,32 @@ function drawPaddle() {
     // Draw Vaus-like paddle
     const r = PADDLE_HEIGHT / 2;
     
-    ctx.fillStyle = '#CCCCCC'; // Main body silver
+    ctx.save(); // Save context state for clipping
+    
+    // Create the main paddle shape path
     ctx.beginPath();
     ctx.roundRect(paddleX, paddleY, paddleWidth, PADDLE_HEIGHT, r);
-    ctx.fill();
+    ctx.clip(); // Clip everything to this shape
     
-    // Red engines
+    // Main body silver
+    ctx.fillStyle = '#CCCCCC'; 
+    ctx.fillRect(paddleX, paddleY, paddleWidth, PADDLE_HEIGHT);
+    
+    // Red engines (Now safely clipped)
     ctx.fillStyle = '#FF0000';
     ctx.beginPath();
-    ctx.roundRect(paddleX + 2, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4, 2);
+    ctx.rect(paddleX + 2, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4);
     ctx.fill();
+    
     ctx.beginPath();
-    ctx.roundRect(paddleX + paddleWidth - paddleWidth * 0.2 - 2, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4, 2);
+    ctx.rect(paddleX + paddleWidth - paddleWidth * 0.2 - 2, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4);
     ctx.fill();
     
     // Center glow
     ctx.fillStyle = '#00AAFF';
     ctx.fillRect(paddleX + paddleWidth * 0.4, paddleY + 2, paddleWidth * 0.2, PADDLE_HEIGHT - 4);
+    
+    ctx.restore(); // Remove clipping
 }
 
 function drawBricks() {

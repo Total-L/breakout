@@ -198,7 +198,7 @@ function checkMobile() {
         BRICK_ROW_COUNT = 10; 
         BRICK_COLUMN_COUNT = 6; 
         BRICK_PADDING = 5;
-        BRICK_OFFSET_TOP = 80; 
+        BRICK_OFFSET_TOP = 100; // Increased offset to clear notch area
         BRICK_OFFSET_LEFT = 10;
         POWERUP_WIDTH = 70;
         POWERUP_HEIGHT = 35;
@@ -278,7 +278,7 @@ function resizeCanvas() {
     
     // Recalculate dimensions based on new size
     paddleWidth = canvas.width * PADDLE_WIDTH_RATIO;
-    paddleY = canvas.height - 40;
+    paddleY = canvas.height - (isMobile ? 80 : 40); // Lift paddle higher on mobile to avoid home bar
     ballRadius = Math.max(4, canvas.width * BALL_RADIUS_RATIO);
     
     // If resizing during play, ensure paddle stays on screen
@@ -573,15 +573,19 @@ function drawPowerUps() {
 
 function drawScore() {
     ctx.font = '20px "Courier New", monospace';
-    ctx.fillStyle = '#FF0000';
-    ctx.fillText('1UP', 20, 30);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(score, 60, 30);
+    
+    // Add safe area padding for mobile notches/status bars
+    const topPadding = isMobile ? 50 : 30;
     
     ctx.fillStyle = '#FF0000';
-    ctx.fillText('HIGH SCORE', canvas.width - 200, 30);
+    ctx.fillText('1UP', 20, topPadding);
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText('50000', canvas.width - 80, 30);
+    ctx.fillText(score, 60, topPadding);
+    
+    ctx.fillStyle = '#FF0000';
+    ctx.fillText('HIGH SCORE', canvas.width - 200, topPadding);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText('50000', canvas.width - 80, topPadding);
     
     // Lives (Vaus icons)
     for(let i = 0; i < lives - 1; i++) {

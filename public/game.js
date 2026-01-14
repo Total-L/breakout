@@ -57,8 +57,12 @@ class SoundController {
         
         let noteIndex = 0;
         
-        this.bgmInterval = setInterval(() => {
-            if (!this.enabled || this.ctx.state === 'suspended') return;
+        // Use a recursive function with setTimeout instead of setInterval for better timing
+        const playNextNote = () => {
+            if (!this.enabled || this.ctx.state === 'suspended') {
+                this.bgmInterval = setTimeout(playNextNote, 500); // Check again later
+                return;
+            }
             
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
@@ -81,12 +85,16 @@ class SoundController {
             }, 250);
             
             noteIndex = (noteIndex + 1) % sequence.length;
-        }, 150);
+            
+            this.bgmInterval = setTimeout(playNextNote, 150);
+        };
+        
+        playNextNote();
     }
 
     stopBGM() {
         if (this.bgmInterval) {
-            clearInterval(this.bgmInterval);
+            clearTimeout(this.bgmInterval);
             this.bgmInterval = null;
         }
     }

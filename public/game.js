@@ -354,15 +354,25 @@ function resetGame() {
 }
 
 // Input handling
+let lastTouchX = null;
+
 function movePaddle(clientX) {
+    // Standard absolute movement for mouse/desktop
     const relativeX = clientX - canvas.offsetLeft;
     if(relativeX > 0 && relativeX < canvas.width) {
         paddleX = relativeX - paddleWidth / 2;
-        
-        // Clamp paddle to screen
-        if (paddleX < 0) paddleX = 0;
-        if (paddleX + paddleWidth > canvas.width) paddleX = canvas.width - paddleWidth;
+        clampPaddle();
     }
+}
+
+function movePaddleRelative(deltaX) {
+    paddleX += deltaX;
+    clampPaddle();
+}
+
+function clampPaddle() {
+    if (paddleX < 0) paddleX = 0;
+    if (paddleX + paddleWidth > canvas.width) paddleX = canvas.width - paddleWidth;
 }
 
 document.addEventListener('mousemove', (e) => {
@@ -371,12 +381,29 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
+document.addEventListener('touchstart', (e) => {
+    if (gameState === 'PLAYING') {
+        lastTouchX = e.touches[0].clientX;
+    }
+}, { passive: false });
+
 document.addEventListener('touchmove', (e) => {
     if (gameState === 'PLAYING') {
         e.preventDefault(); // Prevent scrolling
-        movePaddle(e.touches[0].clientX);
+        
+        const currentTouchX = e.touches[0].clientX;
+        if (lastTouchX !== null) {
+            const deltaX = currentTouchX - lastTouchX;
+            // Sensitivity factor: 1.2 for slightly faster response
+            movePaddleRelative(deltaX * 1.2);
+            lastTouchX = currentTouchX;
+        }
     }
 }, { passive: false });
+
+document.addEventListener('touchend', (e) => {
+    lastTouchX = null;
+});
 
 // Click/Tap to start/restart
 function handleInteraction(e) {

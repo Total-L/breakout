@@ -193,6 +193,32 @@ let BRICK_OFFSET_LEFT = 35;
 let POWERUP_WIDTH = 60;
 let POWERUP_HEIGHT = 30;
 
+// Create Skip Button for Mobile/Touch
+const skipBtn = document.createElement('button');
+skipBtn.innerText = 'Skip Level';
+skipBtn.style.position = 'absolute';
+skipBtn.style.transform = 'translateX(-50%)';
+skipBtn.style.zIndex = '100';
+skipBtn.style.padding = '5px 10px';
+skipBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+skipBtn.style.color = '#fff';
+skipBtn.style.border = '1px solid #fff';
+skipBtn.style.borderRadius = '5px';
+skipBtn.style.cursor = 'pointer';
+skipBtn.style.fontSize = '12px';
+// Hide initially
+skipBtn.style.display = 'none'; 
+document.body.appendChild(skipBtn);
+
+skipBtn.addEventListener('touchstart', (e) => {
+    e.stopPropagation(); // Prevent game interaction
+    if (gameState === 'PLAYING') completeLevel();
+});
+skipBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (gameState === 'PLAYING') completeLevel();
+});
+
 // Mobile adjustments
 let isMobile = false;
 
@@ -210,6 +236,10 @@ function checkMobile() {
         BRICK_OFFSET_LEFT = 10;
         POWERUP_WIDTH = 70;
         POWERUP_HEIGHT = 35;
+        
+        // Button position for mobile (in the gap between header and bricks)
+        skipBtn.style.top = '65px'; 
+        skipBtn.style.left = '50%';
     } else {
         // Reset to desktop defaults if resized back
         PADDLE_HEIGHT = 32; // Significantly thicker desktop paddle (2x previous 16)
@@ -222,6 +252,13 @@ function checkMobile() {
         BRICK_OFFSET_LEFT = 35;
         POWERUP_WIDTH = 60;
         POWERUP_HEIGHT = 30;
+        
+        // Button position for desktop (bottom right corner to avoid bricks)
+        skipBtn.style.top = 'auto';
+        skipBtn.style.bottom = '10px';
+        skipBtn.style.left = 'auto';
+        skipBtn.style.right = '10px';
+        skipBtn.style.transform = 'none';
     }
 }
 
@@ -236,7 +273,7 @@ let bricks = [];
 let score = 0;
 let lives = 3;
 let gameState = 'START'; // START, PLAYING, GAMEOVER
-let round = 1;
+let currentLevel = 1;
 let backgroundPattern = null;
 
 // PowerUp Types
@@ -298,11 +335,11 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Initialize bricks
+// Initialize bricks with Level Design
 function initBricks() {
     bricks = [];
     const brickWidth = (canvas.width - (BRICK_OFFSET_LEFT * 2) - (BRICK_PADDING * (BRICK_COLUMN_COUNT - 1))) / BRICK_COLUMN_COUNT;
-    const brickHeight = isMobile ? 30 : 25; // Taller bricks for both mobile and desktop
+    const brickHeight = isMobile ? 30 : 25;
     
     // Arkanoid colors
     const colors = ['#FF0000', '#FF9900', '#FFFF00', '#00FF00', '#0099FF', '#FF00FF', '#FFFFFF', '#FFD700'];
@@ -314,16 +351,101 @@ function initBricks() {
             let hits = 1;
             let color = colors[r % colors.length];
             let value = 100;
+            let active = true;
 
-            // Randomly assign silver bricks (harder)
-            if (Math.random() > 0.85) {
-                type = 'silver';
-                hits = 2 + Math.floor(round / 5); // Harder in later rounds
-                color = '#C0C0C0';
-                value = 50 * round;
+            const levelPattern = (currentLevel - 1) % 20 + 1;
+            const centerC = (BRICK_COLUMN_COUNT - 1) / 2;
+            const centerR = (BRICK_ROW_COUNT - 1) / 2;
+
+            // Level Design Logic
+            switch(levelPattern) {
+                case 1: // Classic (Solid)
+                    if (Math.random() > 0.9) { type = 'silver'; hits = 2; color = '#C0C0C0'; value = 200; }
+                    break;
+                case 2: // Columns
+                    if (c % 2 !== 0) active = false;
+                    if (active && Math.random() > 0.85) { type = 'silver'; hits = 2; color = '#C0C0C0'; value = 200; }
+                    break;
+                case 3: // Pyramid
+                    if (Math.abs(c - centerC) > r + 0.5) active = false;
+                    if (active && r < 2) { type = 'silver'; hits = 2; color = '#C0C0C0'; value = 300; }
+                    break;
+                case 4: // Checkerboard
+                    if ((r + c) % 2 === 0) active = false;
+                    if (active && Math.random() > 0.7) { type = 'silver'; hits = 2; color = '#C0C0C0'; value = 300; }
+                    break;
+                case 5: // Fortress (Frame)
+                    if (c === 0 || c === BRICK_COLUMN_COUNT - 1 || r === 0 || r === BRICK_ROW_COUNT - 1) {
+                        type = 'silver'; hits = 3; color = '#D4AF37'; value = 500;
+                    } else {
+                        color = colors[(r+c) % colors.length];
+                    }
+                    break;
+                case 6: // Horizontal Stripes
+                    if (r % 2 !== 0) active = false;
+                    break;
+                case 7: // Diamond
+                    if (Math.abs(c - centerC) + Math.abs(r - centerR) > centerR + 1) active = false;
+                    break;
+                case 8: // Inverted Pyramid
+                    if (Math.abs(c - centerC) < (BRICK_ROW_COUNT - 1 - r) * 0.5) active = false;
+                    break;
+                case 9: // X Shape
+                    // Map c to r space for square-ish check, or just approximate
+                    const normC = c / (BRICK_COLUMN_COUNT - 1);
+                    const normR = r / (BRICK_ROW_COUNT - 1);
+                    if (Math.abs(normC - normR) > 0.2 && Math.abs(normC - (1 - normR)) > 0.2) active = false;
+                    else { type = 'silver'; hits = 2; color = '#C0C0C0'; }
+                    break;
+                case 10: // Two Towers
+                    if (c > 1 && c < BRICK_COLUMN_COUNT - 2) active = false;
+                    break;
+                case 11: // H Shape / Maze
+                    if (c % 2 === 0 && r % 2 !== 0) active = false;
+                    if (Math.random() > 0.9) active = !active; // Random noise
+                    break;
+                case 12: // Steps
+                    if (c > r + 2 || c < r - 2) active = false; // Diagonal band
+                    break;
+                case 13: // Arrow
+                    if (Math.abs(c - centerC) > r) active = false; // Triangle top
+                    if (r > BRICK_ROW_COUNT / 2 && Math.abs(c - centerC) > 1) active = false; // Stem
+                    break;
+                case 14: // Dig Dug (Tunnels)
+                    if (c % 3 === 0) active = false;
+                    break;
+                case 15: // Heart (Approx)
+                    // (x^2 + y^2 - 1)^3 - x^2*y^3 = 0 ish... too complex, simple approximation:
+                    const dy = (r - centerR) / centerR;
+                    const dx = (c - centerC) / centerC;
+                    if (dy > 0.5 && Math.abs(dx) > dy) active = false; // Cut bottom corners
+                    if (r === 0 && Math.abs(dx) < 0.2) active = false; // Cut top middle
+                    if (r === 0 && Math.abs(dx) > 0.8) active = false; // Cut top corners
+                    break;
+                case 16: // Hourglass
+                    if (Math.abs(c - centerC) + Math.abs(r - centerR) < centerR) active = false;
+                    break;
+                case 17: // Smiley
+                    const isEye = (r === 2 && (c === 2 || c === BRICK_COLUMN_COUNT - 3));
+                    const isMouth = (r === BRICK_ROW_COUNT - 2 && c > 2 && c < BRICK_COLUMN_COUNT - 3);
+                    if (isEye || isMouth) { type = 'silver'; hits = 2; color = '#FFFFFF'; }
+                    else if (r > 1 && r < BRICK_ROW_COUNT - 1 && c > 1 && c < BRICK_COLUMN_COUNT - 1) active = false;
+                    break;
+                case 18: // DNA / Sine
+                     const sine = Math.sin(r * 0.8) * 2;
+                     if (Math.abs((c - centerC) - sine) > 1 && Math.abs((c - centerC) + sine) > 1) active = false;
+                     break;
+                case 19: // Random Scatter
+                    if (Math.random() > 0.6) active = false;
+                    if (active && Math.random() > 0.5) { type = 'silver'; hits = 2; color = '#C0C0C0'; }
+                    break;
+                case 20: // BOSS: The Wall
+                    type = 'silver'; hits = 3; color = '#FFD700'; value = 500;
+                    if ((c + r) % 2 === 0) { type = 'color'; hits = 1; color = colors[r % colors.length]; }
+                    break;
             }
 
-            bricks[c][r] = { x: 0, y: 0, status: 1, type, hits, color, value };
+            bricks[c][r] = { x: 0, y: 0, status: active ? 1 : 0, type, hits, color, value };
         }
     }
     return { brickWidth, brickHeight };
@@ -351,7 +473,7 @@ function resetGame() {
     powerUps = [];
     score = 0;
     lives = 3;
-    round = 1;
+    currentLevel = 1;
     brickDims = initBricks();
     gameState = 'PLAYING';
     
@@ -412,6 +534,16 @@ document.addEventListener('touchmove', (e) => {
 
 document.addEventListener('touchend', (e) => {
     lastTouchX = null;
+});
+
+// Create Skip Button for Mobile/Touch
+// (Moved to top)
+
+// Debug: Skip Level
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'n' || e.key === 'N') && gameState === 'PLAYING') {
+        completeLevel();
+    }
 });
 
 // Click/Tap to start/restart
@@ -630,6 +762,19 @@ function drawScore() {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(score, 60, topPadding);
     
+    // Draw Level
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.fillText('LEVEL ' + currentLevel, canvas.width / 2, topPadding);
+    
+    // Debug Hint
+    // ctx.font = '12px Arial';
+    // ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    // ctx.fillText('Press N to Skip', canvas.width / 2, topPadding + 20);
+    // ctx.font = '20px "Courier New", monospace'; // Reset font
+    
+    ctx.textAlign = 'left';
+
     ctx.fillStyle = '#FF0000';
     ctx.fillText('HIGH SCORE', canvas.width - 200, topPadding);
     ctx.fillStyle = '#FFFFFF';
@@ -757,20 +902,71 @@ function collisionDetection(brickWidth, brickHeight) {
         }
     }
     
-    if (!activeBricks) {
-        audio.stopBGM();
-        audio.play('win');
-        round++;
-        initBricks();
-        balls.forEach(b => {
-             b.dx *= 1.1;
-             b.dy *= 1.1;
-        });
+    if (!activeBricks && gameState === 'PLAYING') {
+        completeLevel();
     }
 }
 
+function completeLevel() {
+    audio.stopBGM();
+    audio.play('win');
+    gameState = 'LEVEL_TRANSITION';
+    
+    setTimeout(() => {
+        currentLevel++;
+        startLevel();
+    }, 2000);
+}
+
+function startLevel() {
+    brickDims = initBricks();
+    
+    // Reset paddle
+    resizeCanvas();
+    paddleX = (canvas.width - paddleWidth) / 2;
+    
+    // Reset ball position
+    const startX = paddleX + paddleWidth / 2;
+    const startY = paddleY - ballRadius - 2;
+    
+    // Increase speed based on level (10% per level), capped at 2.5x base speed
+    const rawSpeed = (canvas.width < 600 ? 4 : 6) * (1 + (currentLevel - 1) * 0.1);
+    const maxSpeed = (canvas.width < 600 ? 10 : 15);
+    const baseSpeed = Math.min(rawSpeed, maxSpeed);
+    
+    balls = [{
+        x: startX,
+        y: startY,
+        dx: baseSpeed * (Math.random() > 0.5 ? 1 : -1),
+        dy: -baseSpeed,
+        active: true
+    }];
+    
+    powerUps = [];
+    gameState = 'PLAYING';
+    audio.startBGM();
+}
+
+function drawLevelTransition() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LEVEL ' + currentLevel + ' COMPLETE', canvas.width / 2, canvas.height / 2 - 40);
+    
+    ctx.font = '30px Arial';
+    ctx.fillText('GET READY FOR LEVEL ' + (currentLevel + 1), canvas.width / 2, canvas.height / 2 + 20);
+    
+    // Reset alignment
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+}
+
 function draw() {
-    if (gameState !== 'PLAYING') return;
+    if (gameState !== 'PLAYING' && gameState !== 'LEVEL_TRANSITION') return;
 
     // Draw background
     ctx.fillStyle = backgroundPattern || '#000022';
@@ -788,6 +984,21 @@ function draw() {
     drawPowerUps();
     drawPaddle();
     drawScore();
+
+    if (gameState === 'LEVEL_TRANSITION') {
+        skipBtn.style.display = 'none'; // Hide button during transition
+        drawLevelTransition();
+        requestAnimationFrame(draw);
+        return;
+    }
+
+    // Show button only during gameplay
+    if (gameState === 'PLAYING') {
+        skipBtn.style.display = 'block';
+    } else {
+        skipBtn.style.display = 'none';
+    }
+
     collisionDetection(brickWidth, brickHeight);
     
     // Update PowerUps

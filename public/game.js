@@ -335,8 +335,9 @@ function resetGame() {
     resizeCanvas();
     paddleX = (canvas.width - paddleWidth) / 2;
     
-    const startX = canvas.width / 2;
-    const startY = canvas.height - 60;
+    // Ball starts from the center of the paddle, slightly above it
+    const startX = paddleX + paddleWidth / 2;
+    const startY = paddleY - ballRadius - 2; 
     const speed = canvas.width < 600 ? 4 : 6;
     
     balls = [{
@@ -855,9 +856,14 @@ function draw() {
         } else {
             // Reset ball
             paddleX = (canvas.width - paddleWidth) / 2;
+            
+            // Ball starts from the center of the paddle, slightly above it
+            const startX = paddleX + paddleWidth / 2;
+            const startY = paddleY - ballRadius - 2;
+            
             balls = [{
-                x: canvas.width / 2,
-                y: canvas.height - 60,
+                x: startX,
+                y: startY,
                 dx: 4 * (Math.random() > 0.5 ? 1 : -1),
                 dy: -4,
                 active: true
